@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+
+        .todo-form {
+            display: flex;
+            margin-bottom: 20px;
+        }
+
+        .todo-input {
+            flex: 1;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px 0 0 4px;
+        }
+
+        .add-btn {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
+        }
+
+        .add-btn:hover {
+            background-color: #45a049;
+        }
+
+        .todo-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .todo-item {
+            background-color: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+        }
+
+        .todo-text {
+            flex: 1;
+            margin-right: 10px;
+        }
+
+        .completed {
+            text-decoration: line-through;
+            color: #888;
+        }
+
+        .checkbox {
+            margin-right: 10px;
+        }
+
+        .delete-btn {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .delete-btn:hover {
+            background-color: #da190b;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Todo App</h1>
+    <form class="todo-form" id="todoForm">
+        <input type="text" class="todo-input" id="todoInput" placeholder="Add a new todo..." required>
+        <button type="submit" class="add-btn">Add</button>
+    </form>
+    <ul class="todo-list" id="todoList"></ul>
+
+    <script>
+        const todoForm = document.getElementById('todoForm');
+        const todoInput = document.getElementById('todoInput');
+        const todoList = document.getElementById('todoList');
+
+        // Load todos on page load
+        loadTodos();
+
+        // Add todo
+        todoForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = todoInput.value.trim();
+            if (!title) return;
+
+            try {
+                const response = await fetch('/api/todos', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ title }),
+                });
+
+                if (response.ok) {
+                    todoInput.value = '';
+                    loadTodos();
+                } else {
+                    console.error('Failed to add todo');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        });
+
+        // Load todos
+        async function loadTodos() {
+            try {
+                const response = await fetch('/api/todos');
+                const todos = await response.json();
+                renderTodos(todos);
+            } catch (error) {
+                console.error('Error loading todos:', error);
+            }
+        }
+
+        // Render todos
+        function renderTodos(todos) {
+            todoList.innerHTML = '';
+            todos.forEach(todo => {
+                const li = document.createElement('li');
+                li.className = 'todo-item';
+
+                li.innerHTML = `
+                    <input type="checkbox" class="checkbox" ${todo.completed ? 'checked' : ''} data-id="${todo.id}">
+                    <span class="todo-text ${todo.completed ? 'completed' : ''}">${todo.title}</span>
+                    <button class="delete-btn" data-id="${todo.id}">Delete</button>
+                `;
+
+                todoList.appendChild(li);
+            });
+        }
+
+        // Handle checkbox change
+        todoList.addEventListener('change', async (e) => {
+            if (e.target.classList.contains('checkbox')) {
+                const id = e.target.dataset.id;
+                const completed = e.target.checked;
+
+                try {
+                    await fetch(`/api/todos/${id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ completed }),
+                    });
+                    loadTodos();
+                } catch (error) {
+                    console.error('Error updating todo:', error);
+                }
+            }
+        });
+
+        // Handle delete
+        todoList.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('delete-btn')) {
+                const id = e.target.dataset.id;
+
+                try {
+                    await fetch(`/api/todos/${id}`, {
+                        method: 'DELETE',
+                    });
+                    loadTodos();
+                } catch (error) {
+                    console.error('Error deleting todo:', error);
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
